@@ -65,8 +65,14 @@ def barycentric(pt1, pt2, pt3, x, y):
     y0 = pt1[1]
     y1 = pt2[1]
     y2 = pt3[1]
-    bar1 = ((y - y2)(x1 - x2) - (x - x2)(y1 - y2))/((y0 - y2)(x1 - x2) - (x0 - x2)(y1 - y2))
+    bar1 = ((y - y2)(x1 - x2) - (x - x2)(y1 - y2)) / ((y0 - y2)(x1 - x2) - (x0 - x2)(y1 - y2))
+    bar2 = ((y - y0)(x2 - x0) - (x - x0)(y2 - y0)) / ((y1 - y0)(x2 - x0) - (x1 - x0)(y2 - y0))
+    bar3 = ((y - y1)(x0 - x1) - (x - x1)(y0 - y1)) / ((y2 - y1)(x0 - x1) - (x2 - x1)(y0 - y1))
 
+    if (bar1 < 0) or (bar2 < 0) or (bar3 < 0):
+        return False
+    else:
+        return True
 
 
 
