@@ -1,3 +1,4 @@
+import Model
 from graphics import *
 
 
