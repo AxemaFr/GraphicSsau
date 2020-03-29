@@ -71,7 +71,7 @@ def fillPolygon(pt1, pt2, pt3, color):
     interes = rect(xs[0], xs[2], ys[0], ys[2])
     for point in interes:
         if barycentric(pt1, pt2, pt3, point[0], point[1]):
-            win.plot(point[0], point[1], color_rgb(120, 120, 120))
+            win.plot(point[0], point[1], color)
 
 
 def barycentric(pt1, pt2, pt3, x, y):
@@ -111,8 +111,7 @@ def draw_polygons():
         draw_line(pt1[0], pt1[1], pt2[0], pt2[1])
         draw_line(pt2[0], pt2[1], pt3[0], pt3[1])
         draw_line(pt1[0], pt1[1], pt3[0], pt3[1])
-        fillPolygon(pt1, pt2, pt3, 12)
-        win.flush()
+        fillPolygon(pt1, pt2, pt3, color_rgb(np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255)))
     print('Finished drawing polygons')
 
 
