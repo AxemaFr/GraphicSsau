@@ -7,3 +7,6 @@ class Model:
 
     def addPoint(self, point):
         self.points.append(point)
+
+    def len(self):
+        return len(self.points)
