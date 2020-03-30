@@ -3,6 +3,7 @@ from graphics import *
 import numpy as np
 from sklearn.preprocessing import minmax_scale
 
+zbufer = np.zeros((1000, 1000))
 
 def open_file():
     f = open('stanford_bunny/stanford-bunny.obj', 'r')
@@ -65,7 +66,6 @@ def rect(x1, x2, y1, y2):
 
 
 def fillPolygon(pt1, pt2, pt3, color):
-    zbufer = 0
     xs = [pt1[0], pt2[0], pt3[0]]
     xs.sort()
     ys = [pt1[1], pt2[1], pt3[1]]
@@ -73,8 +73,15 @@ def fillPolygon(pt1, pt2, pt3, color):
     interes = rect(xs[0], xs[2], ys[0], ys[2])
     for point in interes:
         if barycentric(pt1, pt2, pt3, point[0], point[1]):
-
             win.plot(point[0], point[1], color)
+
+
+def zb(x, y, z):
+    if zbufer[x][y] < z:
+        zbufer[x][y] = z
+        return True
+    else:
+        return False
 
 
 def barycentric(pt1, pt2, pt3, x, y):
@@ -102,30 +109,24 @@ def barycentric(pt1, pt2, pt3, x, y):
     if (bar1 <= 0) or (bar2 <= 0) or (bar3 <= 0):
         return False
     else:
-        return True
+        if zb(x, y, bar1 * pt1[2] + bar2 * pt2[2] + bar3 * pt3[2]):
+            return True
+        else:
+            return False
 
 
 def isPolygonVisible(p0, p1, p2):
-    x12 = p1[0] - p2[0]
-    x21 = -x12
     x02 = p0[0] - p2[0]
     x20 = -x02
     x10 = p1[0] - p0[0]
-    x01 = -x10
 
-    y12 = p1[1] - p2[1]
-    y21 = -y12
     y02 = p0[1] - p2[1]
     y20 = -y02
     y10 = p1[1] - p0[1]
-    y01 = -y10
 
-    z12 = p1[2] - p2[2]
-    z21 = -z12
     z02 = p0[2] - p2[2]
     z20 = -z02
     z10 = p1[2] - p0[2]
-    z01 = -z10
 
     length = np.sqrt(
         np.power(y20 * z10 - z20 * y10, 2) +
