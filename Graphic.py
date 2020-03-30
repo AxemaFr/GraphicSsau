@@ -1,6 +1,7 @@
 from Model import Model
 from graphics import *
 import numpy as np
+from sklearn.preprocessing import minmax_scale
 
 
 def open_file():
@@ -9,9 +10,9 @@ def open_file():
     for line in f:
         if line.startswith('v '):
             parts = line.split(' ')
-            model.addPoint([int(float(parts[1]) * 8000 + 500),
-                            int(-float(parts[2]) * 8000 + 700),
-                            int(float(parts[3].split('\n')[0]) * 10000) + 1000])
+            model.addPoint([int(float(parts[1]) * 4000 + 500),
+                            int(-float(parts[2]) * 4000 + 500),
+                            int(float(parts[3].split('\n')[0]) * 4000 + 500)])
         if line.startswith('f '):
             parts = line.split(' ')
             model.addPolygon(
@@ -81,18 +82,18 @@ def barycentric(pt1, pt2, pt3, x, y):
     y0 = pt1[1]
     y1 = pt2[1]
     y2 = pt3[1]
-    if ((y0 - y2)*(x1 - x2) - (x0 - x2)*(y1 - y2)) != 0:
-        bar1 = ((y - y2)*(x1 - x2) - (x - x2)*(y1 - y2)) / ((y0 - y2)*(x1 - x2) - (x0 - x2)*(y1 - y2))
+    if ((y0 - y2) * (x1 - x2) - (x0 - x2) * (y1 - y2)) != 0:
+        bar1 = ((y - y2) * (x1 - x2) - (x - x2) * (y1 - y2)) / ((y0 - y2) * (x1 - x2) - (x0 - x2) * (y1 - y2))
     else:
         bar1 = -1
 
-    if ((y1 - y0)*(x2 - x0) - (x1 - x0)*(y2 - y0)) != 0:
-        bar2 = ((y - y0)*(x2 - x0) - (x - x0)*(y2 - y0)) / ((y1 - y0)*(x2 - x0) - (x1 - x0)*(y2 - y0))
+    if ((y1 - y0) * (x2 - x0) - (x1 - x0) * (y2 - y0)) != 0:
+        bar2 = ((y - y0) * (x2 - x0) - (x - x0) * (y2 - y0)) / ((y1 - y0) * (x2 - x0) - (x1 - x0) * (y2 - y0))
     else:
         bar2 = -1
 
-    if ((y2 - y1)*(x0 - x1) - (x2 - x1)*(y0 - y1)) != 0:
-        bar3 = ((y - y1)*(x0 - x1) - (x - x1)*(y0 - y1)) / ((y2 - y1)*(x0 - x1) - (x2 - x1)*(y0 - y1))
+    if ((y2 - y1) * (x0 - x1) - (x2 - x1) * (y0 - y1)) != 0:
+        bar3 = ((y - y1) * (x0 - x1) - (x - x1) * (y0 - y1)) / ((y2 - y1) * (x0 - x1) - (x2 - x1) * (y0 - y1))
     else:
         bar3 = -1
 
@@ -102,16 +103,43 @@ def barycentric(pt1, pt2, pt3, x, y):
         return True
 
 
+def isPolygonVisible(pt1, pt2, pt3):
+    n = [0, 0, 0]
+    Vx = pt3[0] - pt1[0]
+    Vy = pt3[1] - pt1[1]
+    Vz = pt3[2] - pt1[2]
+    Ux = pt2[0] - pt1[0]
+    Uy = pt2[1] - pt1[1]
+    Uz = pt2[2] - pt1[2]
+    n[0] = Vy * Uz - Vz * Uy
+    n[1] = Vz * Ux - Vx * Uz
+    n[2] = Vx * Uy - Vy * Ux
+    nNorm = np.linalg.norm(n)
+    v = [1, 1, -1]
+    vNorm = np.linalg.norm(v)
+    cos = (n[0] * v[0] + n[1] * v[1] + n[2] * v[2]) / (nNorm * vNorm)
+    if n[2] > 0:
+        return False
+    else:
+        return n[2] * -1
+    # if cos > 0:
+    # return False
+    # else:
+    # return True
+
+
 def draw_polygons():
     print('Started drawing polygons')
     for pg in model.getPolygons():
         pt1 = model.getPoint(pg[0])
         pt2 = model.getPoint(pg[1])
         pt3 = model.getPoint(pg[2])
-        draw_line(pt1[0], pt1[1], pt2[0], pt2[1])
-        draw_line(pt2[0], pt2[1], pt3[0], pt3[1])
-        draw_line(pt1[0], pt1[1], pt3[0], pt3[1])
-        fillPolygon(pt1, pt2, pt3, color_rgb(np.random.randint(0, 255), np.random.randint(0, 255), np.random.randint(0, 255)))
+        bright = isPolygonVisible(pt1, pt2, pt3)
+        if bright:
+            draw_line(pt1[0], pt1[1], pt2[0], pt2[1])
+            draw_line(pt2[0], pt2[1], pt3[0], pt3[1])
+            draw_line(pt1[0], pt1[1], pt3[0], pt3[1])
+            fillPolygon(pt1, pt2, pt3, color_rgb(int(np.abs(bright)*255), int(np.abs(bright)*255), int(np.abs(bright)*255)))
     print('Finished drawing polygons')
 
 
