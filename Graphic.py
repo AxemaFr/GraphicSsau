@@ -5,14 +5,14 @@ from sklearn.preprocessing import minmax_scale
 
 
 def open_file():
-    f = open('file.obj', 'r')
+    f = open('stanford_bunny/stanford-bunny.obj', 'r')
     print('Started reading file')
     for line in f:
         if line.startswith('v '):
             parts = line.split(' ')
-            model.addPoint([int(float(parts[1]) * 4000 + 500),
-                            int(-float(parts[2]) * 4000 + 500),
-                            int(float(parts[3].split('\n')[0]) * 4000 + 500)])
+            model.addPoint([int(float(parts[1]) * 6000 + 500),
+                            int(-float(parts[2]) * 6000 + 800),
+                            int(float(parts[3].split('\n')[0]) * 6000 + 500)])
         if line.startswith('f '):
             parts = line.split(' ')
             model.addPolygon(
@@ -20,7 +20,7 @@ def open_file():
     print('Finished reading file')
 
 
-def draw_line(x1, y1, x2, y2):
+def draw_line(x1, y1, x2, y2, color):
     change = False
     if np.abs(x2 - x1) < np.abs(y2 - y1):
         x1, y1 = y1, x1
@@ -39,9 +39,9 @@ def draw_line(x1, y1, x2, y2):
     dsum = 0
     for x in range(x1, x2):
         if change:
-            win.plot(y, x)
+            win.plot(y, x, color)
         else:
-            win.plot(x, y)
+            win.plot(x, y, color)
         dsum += derror
         if dsum > dx:
             dsum -= 2 * dx
@@ -65,6 +65,7 @@ def rect(x1, x2, y1, y2):
 
 
 def fillPolygon(pt1, pt2, pt3, color):
+    zbufer = 0
     xs = [pt1[0], pt2[0], pt3[0]]
     xs.sort()
     ys = [pt1[1], pt2[1], pt3[1]]
@@ -72,6 +73,7 @@ def fillPolygon(pt1, pt2, pt3, color):
     interes = rect(xs[0], xs[2], ys[0], ys[2])
     for point in interes:
         if barycentric(pt1, pt2, pt3, point[0], point[1]):
+
             win.plot(point[0], point[1], color)
 
 
@@ -103,30 +105,44 @@ def barycentric(pt1, pt2, pt3, x, y):
         return True
 
 
-def isPolygonVisible(pt1, pt2, pt3):
-    n = [0, 0, 0]
-    Vx = pt3[0] - pt1[0]
-    Vy = pt3[1] - pt1[1]
-    Vz = pt3[2] - pt1[2]
-    Ux = pt2[0] - pt1[0]
-    Uy = pt2[1] - pt1[1]
-    Uz = pt2[2] - pt1[2]
-    n[0] = Vy * Uz - Vz * Uy
-    n[1] = Vz * Ux - Vx * Uz
-    n[2] = Vx * Uy - Vy * Ux
-    nNorm = np.linalg.norm(n)
-    v = [1, 1, -1]
-    vNorm = np.linalg.norm(v)
-    cos = (n[0] * v[0] + n[1] * v[1] + n[2] * v[2]) / (nNorm * vNorm)
-    if n[2] > 0:
+def isPolygonVisible(p0, p1, p2):
+    x12 = p1[0] - p2[0]
+    x21 = -x12
+    x02 = p0[0] - p2[0]
+    x20 = -x02
+    x10 = p1[0] - p0[0]
+    x01 = -x10
+
+    y12 = p1[1] - p2[1]
+    y21 = -y12
+    y02 = p0[1] - p2[1]
+    y20 = -y02
+    y10 = p1[1] - p0[1]
+    y01 = -y10
+
+    z12 = p1[2] - p2[2]
+    z21 = -z12
+    z02 = p0[2] - p2[2]
+    z20 = -z02
+    z10 = p1[2] - p0[2]
+    z01 = -z10
+
+    length = np.sqrt(
+        np.power(y20 * z10 - z20 * y10, 2) +
+        np.power(z20 * x10 - x20 * z10, 2) +
+        np.power(x20 * y10 - x10 * y20, 2)
+    )
+
+    normal = [
+        (y20 * z10 - z20 * y10)/length,
+        (z20 * x10 - x20 * z10)/length,
+        (x20 * y10 - x10 * y20)/length
+    ]
+
+    if normal[2] < 0:
         return False
     else:
-        return n[2] * -1
-    # if cos > 0:
-    # return False
-    # else:
-    # return True
-
+        return normal[2] * -1
 
 def draw_polygons():
     print('Started drawing polygons')
@@ -136,10 +152,14 @@ def draw_polygons():
         pt3 = model.getPoint(pg[2])
         bright = isPolygonVisible(pt1, pt2, pt3)
         if bright:
-            draw_line(pt1[0], pt1[1], pt2[0], pt2[1])
-            draw_line(pt2[0], pt2[1], pt3[0], pt3[1])
-            draw_line(pt1[0], pt1[1], pt3[0], pt3[1])
-            fillPolygon(pt1, pt2, pt3, color_rgb(int(np.abs(bright)*255), int(np.abs(bright)*255), int(np.abs(bright)*255)))
+            if not np.isnan(bright):
+                color = color_rgb(int(np.abs(bright)*255), int(np.abs(bright)*255), int(np.abs(bright)*255))
+            else:
+                color = color_rgb(255, 255, 255)
+            draw_line(pt1[0], pt1[1], pt2[0], pt2[1], color)
+            draw_line(pt2[0], pt2[1], pt3[0], pt3[1], color)
+            draw_line(pt1[0], pt1[1], pt3[0], pt3[1], color)
+            fillPolygon(pt1, pt2, pt3, color)
     print('Finished drawing polygons')
 
 
