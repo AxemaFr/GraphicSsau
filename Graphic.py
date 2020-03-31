@@ -4,20 +4,52 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def open_file():
+def open_file(angle):
+    model.clear()
     f = open('stanford_bunny/stanford-bunny.obj', 'r')
     print('Started reading file')
     for line in f:
         if line.startswith('v '):
             parts = line.split(' ')
-            model.addPoint([int(float(parts[1]) * width * 30 / 4 + width/2),
-                            int(-float(parts[2]) * width * 30 / 4 + width*3/4),
-                            int(float(parts[3].split('\n')[0]) * width * 30 / 4 + width/2)])
+            ptx = float(parts[1]) * width * 15 / 2
+            pty = -float(parts[2]) * width * 15 / 2
+            ptz = float(parts[3].split('\n')[0]) * width * 15 / 2
+
+            pt = [ptx, pty, ptz]
+            pt = translateY(pt, angle)
+            model.addPoint([int(pt[0] + width/2), int(pt[1] + width * 0.8), int(pt[2] + width/2)])
         if line.startswith('f '):
             parts = line.split(' ')
             model.addPolygon(
                 [int(parts[1].split('/')[0]) - 1, int(parts[2].split('/')[0]) - 1, int(parts[3].split('/')[0]) - 1])
     print('Finished reading file')
+
+def translateZ(pt, angle):
+    TR = np.identity(4)
+    TR[0, 0] = np.cos(angle)
+    TR[0, 1] = np.sin(angle)
+    TR[1, 0] = - np.sin(angle)
+    TR[1, 1] = np.cos(angle)
+    res = np.matmul(TR, [pt[0], pt[1], pt[2], 1])
+    return [int(res[0]), int(res[1]), int(res[2])]
+
+def translateY(pt, angle):
+    TR = np.identity(4)
+    TR[0, 0] = np.cos(angle)
+    TR[0, 2] = np.sin(angle)
+    TR[2, 0] = - np.sin(angle)
+    TR[2, 2] = np.cos(angle)
+    res = np.matmul(TR, [pt[0], pt[1], pt[2], 1])
+    return [int(res[0]), int(res[1]), int(res[2])]
+
+def translateX(pt, angle):
+    TR = np.identity(4)
+    TR[1, 1] = np.cos(angle)
+    TR[1, 2] = np.sin(angle)
+    TR[2, 1] = - np.sin(angle)
+    TR[2, 2] = np.cos(angle)
+    res = np.matmul(TR, [pt[0], pt[1], pt[2], 1])
+    return [int(res[0]), int(res[1]), int(res[2])]
 
 
 def draw_textured_pix(point, coords, texture, bright):
@@ -36,8 +68,9 @@ def draw_textured_pix(point, coords, texture, bright):
     if b > 255:
         b = 255
 
-    color = color_rgb(int(bright*254), int(bright*254), int(bright*254))
-    a.setPixel(point[0], point[1], color)
+    color = color_rgb(int(bright*255), int(bright*255), int(bright*255))
+    if point[0] >= 0 and point[1] >= 0:
+        a.setPixel(point[0], point[1], color)
 
 
 def open_texture():
@@ -214,18 +247,21 @@ def draw_polygons():
 
 
 model = Model()
-width = 1000
-heigth = 1000
-zbufer = np.zeros((width + 1, heigth + 1))
-win = GraphWin("Картинка", width, heigth)
-a = Image(Point(width/2, heigth/2), width, heigth)
+width = 300
+heigth = 300
+win = GraphWin("Картинка", width, heigth, autoflush=False)
 
-open_file()
-open_texture()
-draw_polygons()
-print('Started final render')
-a.draw(win)
-print('Finished final render')
+for i in range(1, 10):
+    a = Image(Point(width / 2, heigth / 2), width, heigth)
+    zbufer = np.zeros((width * 2, heigth * 2))
+    open_file(np.pi/i)
+    open_texture()
+    draw_polygons()
+    for i in range(1, int(width)):
+        for j in range(1, int(heigth)):
+            win.plot(i, j, 'white')
+    a.draw(win)
+    win.update()
 win.getMouse()
 
 

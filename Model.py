@@ -21,3 +21,7 @@ class Model:
     def getPolygons(self):
         return self.polygons
 
+    def clear(self):
+        self.points = []
+        self.polygons = []
+
