@@ -1,6 +1,8 @@
 from Model import Model
 from graphics import *
 import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import *
 
 zbufer = np.zeros((1000, 1000))
 
@@ -20,7 +22,31 @@ def open_file():
     print('Finished reading file')
 
 
-def draw_line(x1, y1, x2, y2, color, pt1, pt2, pt3):
+def draw_textured_pix(point, coords, texture, bright):
+    if type(coords) != bool:
+        for item in coords:
+            if np.isnan(item):
+                coords = [1, 1]
+    r = int(texture[int(coords[0] * 511), int(coords[1] * 511), 0] * 255 * bright)
+    g = int(texture[int(coords[0] * 511), int(coords[1] * 511), 1] * 255 * bright)
+    b = int(texture[int(coords[0] * 511), int(coords[1] * 511), 2] * 255 * bright)
+
+    if r>255:
+        r = 255
+    if g>255:
+        g = 255
+    if b>255:
+        b = 255
+
+    color = color_rgb(r, g, b)
+    win.plot(point[0], point[1], color)
+
+
+def open_texture():
+    texture = plt.imread('stanford_bunny/negz.png')
+    return texture
+
+def draw_line(x1, y1, x2, y2, bright, pt1, pt2, pt3, texture):
     change = False
     if np.abs(x2 - x1) < np.abs(y2 - y1):
         x1, y1 = y1, x1
@@ -39,11 +65,13 @@ def draw_line(x1, y1, x2, y2, color, pt1, pt2, pt3):
     dsum = 0
     for x in range(x1, x2):
         if change:
-            if barycentric(pt1, pt2, pt3, y, x, True):
-                win.plot(y, x, color)
+            coords = barycentric(pt1, pt2, pt3, y, x, False, True)
+            if type(coords) != bool:
+                draw_textured_pix([y, x], coords, texture, bright)
         else:
-            if barycentric(pt1, pt2, pt3, x, y, True):
-                win.plot(x, y, color)
+            coords = barycentric(pt1, pt2, pt3, x, y, False, True)
+            if type(coords) != bool:
+                draw_textured_pix([x, y], coords, texture, bright)
         dsum += derror
         if dsum > dx:
             dsum -= 2 * dx
@@ -66,15 +94,21 @@ def rect(x1, x2, y1, y2):
     return points
 
 
-def fillPolygon(pt1, pt2, pt3, color):
+def fillPolygon(pt1, pt2, pt3, bright, texture):
     xs = [pt1[0], pt2[0], pt3[0]]
     xs.sort()
     ys = [pt1[1], pt2[1], pt3[1]]
     ys.sort()
     interes = rect(xs[0], xs[2], ys[0], ys[2])
     for point in interes:
-        if barycentric(pt1, pt2, pt3, point[0], point[1], False):
-            win.plot(point[0], point[1], color)
+        brightTemp = bright
+        coords = barycentric(pt1, pt2, pt3, point[0], point[1], False, False)
+        if np.isnan(bright):
+            brightTemp = 1
+        if type(coords) != bool:
+            draw_textured_pix(point, coords, texture, np.abs(brightTemp))
+
+
 
 
 def zb(x, y, z):
@@ -85,7 +119,7 @@ def zb(x, y, z):
         return False
 
 
-def barycentric(pt1, pt2, pt3, x, y, zbonly):
+def barycentric(pt1, pt2, pt3, x, y, zbonly, coords):
     x0 = pt1[0]
     x1 = pt2[0]
     x2 = pt3[0]
@@ -106,19 +140,31 @@ def barycentric(pt1, pt2, pt3, x, y, zbonly):
         bar3 = ((y - y1) * (x0 - x1) - (x - x1) * (y0 - y1)) / ((y2 - y1) * (x0 - x1) - (x2 - x1) * (y0 - y1))
     else:
         bar3 = 10000
+
     if zbonly:
         if zb(x, y, bar1 * pt1[2] + bar2 * pt2[2] + bar3 * pt3[2]):
             return True
         else:
             return False
 
-    if (bar1 <= 0) or (bar2 <= 0) or (bar3 <= 0):
-        return False
-    else:
+    if coords:
         if zb(x, y, bar1 * pt1[2] + bar2 * pt2[2] + bar3 * pt3[2]):
-            return True
+            #arr = [int(bar1 * pt1[0] + bar2 * pt2[0] + bar3 * pt3[0]), int(bar1 * pt1[1] + bar2 * pt2[1] + bar3 * pt3[1])]
+            arr = [bar1, bar2]
+            normArr = arr / np.linalg.norm(arr)
+            return normArr
         else:
             return False
+
+    if (bar1 <= 0) or (bar2 <= 0) or (bar3 <= 0):
+        return False
+
+    if zb(x, y, bar1 * pt1[2] + bar2 * pt2[2] + bar3 * pt3[2]):
+        arr = [int(bar1 * pt1[0] + bar2 * pt2[0] + bar3 * pt3[0]), int(bar1 * pt1[1] + bar2 * pt2[1] + bar3 * pt3[1])]
+        normArr = arr/np.linalg.norm(arr)
+        return normArr
+    else:
+        return False
 
 
 def isPolygonVisible(p0, p1, p2):
@@ -153,20 +199,23 @@ def isPolygonVisible(p0, p1, p2):
 
 def draw_polygons():
     print('Started drawing polygons')
+    texture = open_texture()
+    lastgoodbright = 0
     for pg in model.getPolygons():
         pt1 = model.getPoint(pg[0])
         pt2 = model.getPoint(pg[1])
         pt3 = model.getPoint(pg[2])
-        bright = isPolygonVisible(pt1, pt2, pt3)
+        bright = np.abs(isPolygonVisible(pt1, pt2, pt3))
         if bright:
-            if not np.isnan(bright):
-                color = color_rgb(int(np.abs(bright)*255), int(np.abs(bright)*255), int(np.abs(bright)*255))
+            if np.isnan(bright):
+                bright = lastgoodbright
             else:
-                color = color_rgb(255, 255, 255)
-            draw_line(pt1[0], pt1[1], pt2[0], pt2[1], color, pt1, pt2, pt3)
-            draw_line(pt2[0], pt2[1], pt3[0], pt3[1], color, pt1, pt2, pt3)
-            draw_line(pt1[0], pt1[1], pt3[0], pt3[1], color, pt1, pt2, pt3)
-            fillPolygon(pt1, pt2, pt3, color)
+                lastgoodbright = bright
+
+            draw_line(pt1[0], pt1[1], pt2[0], pt2[1], bright, pt1, pt2, pt3, texture)
+            draw_line(pt2[0], pt2[1], pt3[0], pt3[1], bright, pt1, pt2, pt3, texture)
+            draw_line(pt1[0], pt1[1], pt3[0], pt3[1], bright, pt1, pt2, pt3, texture)
+            fillPolygon(pt1, pt2, pt3, bright, texture)
     print('Finished drawing polygons')
 
 
@@ -176,6 +225,7 @@ win = GraphWin("Картинка", 800, 800)
 win.autoflush = False
 
 open_file()
+open_texture()
 draw_points()
 draw_polygons()
 print('Started final render')
