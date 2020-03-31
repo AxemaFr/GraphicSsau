@@ -1,7 +1,6 @@
 from Model import Model
 from graphics import *
 import numpy as np
-from sklearn.preprocessing import minmax_scale
 
 zbufer = np.zeros((1000, 1000))
 
@@ -21,7 +20,7 @@ def open_file():
     print('Finished reading file')
 
 
-def draw_line(x1, y1, x2, y2, color):
+def draw_line(x1, y1, x2, y2, color, pt1, pt2, pt3):
     change = False
     if np.abs(x2 - x1) < np.abs(y2 - y1):
         x1, y1 = y1, x1
@@ -40,9 +39,11 @@ def draw_line(x1, y1, x2, y2, color):
     dsum = 0
     for x in range(x1, x2):
         if change:
-            win.plot(y, x, color)
+            if barycentric(pt1, pt2, pt3, y, x, True):
+                win.plot(y, x, color)
         else:
-            win.plot(x, y, color)
+            if barycentric(pt1, pt2, pt3, x, y, True):
+                win.plot(x, y, color)
         dsum += derror
         if dsum > dx:
             dsum -= 2 * dx
@@ -72,7 +73,7 @@ def fillPolygon(pt1, pt2, pt3, color):
     ys.sort()
     interes = rect(xs[0], xs[2], ys[0], ys[2])
     for point in interes:
-        if barycentric(pt1, pt2, pt3, point[0], point[1]):
+        if barycentric(pt1, pt2, pt3, point[0], point[1], False):
             win.plot(point[0], point[1], color)
 
 
@@ -84,7 +85,7 @@ def zb(x, y, z):
         return False
 
 
-def barycentric(pt1, pt2, pt3, x, y):
+def barycentric(pt1, pt2, pt3, x, y, zbonly):
     x0 = pt1[0]
     x1 = pt2[0]
     x2 = pt3[0]
@@ -94,17 +95,22 @@ def barycentric(pt1, pt2, pt3, x, y):
     if ((y0 - y2) * (x1 - x2) - (x0 - x2) * (y1 - y2)) != 0:
         bar1 = ((y - y2) * (x1 - x2) - (x - x2) * (y1 - y2)) / ((y0 - y2) * (x1 - x2) - (x0 - x2) * (y1 - y2))
     else:
-        bar1 = -1
+        bar1 = 10000
 
     if ((y1 - y0) * (x2 - x0) - (x1 - x0) * (y2 - y0)) != 0:
         bar2 = ((y - y0) * (x2 - x0) - (x - x0) * (y2 - y0)) / ((y1 - y0) * (x2 - x0) - (x1 - x0) * (y2 - y0))
     else:
-        bar2 = -1
+        bar2 = 10000
 
     if ((y2 - y1) * (x0 - x1) - (x2 - x1) * (y0 - y1)) != 0:
         bar3 = ((y - y1) * (x0 - x1) - (x - x1) * (y0 - y1)) / ((y2 - y1) * (x0 - x1) - (x2 - x1) * (y0 - y1))
     else:
-        bar3 = -1
+        bar3 = 10000
+    if zbonly:
+        if zb(x, y, bar1 * pt1[2] + bar2 * pt2[2] + bar3 * pt3[2]):
+            return True
+        else:
+            return False
 
     if (bar1 <= 0) or (bar2 <= 0) or (bar3 <= 0):
         return False
@@ -140,7 +146,7 @@ def isPolygonVisible(p0, p1, p2):
         (x20 * y10 - x10 * y20)/length
     ]
 
-    if normal[2] < 0:
+    if normal[2] <= 0:
         return False
     else:
         return normal[2] * -1
@@ -157,21 +163,22 @@ def draw_polygons():
                 color = color_rgb(int(np.abs(bright)*255), int(np.abs(bright)*255), int(np.abs(bright)*255))
             else:
                 color = color_rgb(255, 255, 255)
-            draw_line(pt1[0], pt1[1], pt2[0], pt2[1], color)
-            draw_line(pt2[0], pt2[1], pt3[0], pt3[1], color)
-            draw_line(pt1[0], pt1[1], pt3[0], pt3[1], color)
+            draw_line(pt1[0], pt1[1], pt2[0], pt2[1], color, pt1, pt2, pt3)
+            draw_line(pt2[0], pt2[1], pt3[0], pt3[1], color, pt1, pt2, pt3)
+            draw_line(pt1[0], pt1[1], pt3[0], pt3[1], color, pt1, pt2, pt3)
             fillPolygon(pt1, pt2, pt3, color)
     print('Finished drawing polygons')
 
 
 model = Model()
 
-win = GraphWin("Картинка", 1000, 1000)
+win = GraphWin("Картинка", 800, 800)
 win.autoflush = False
 
 open_file()
 draw_points()
 draw_polygons()
-
+print('Started final render')
 win.flush()
+print('Finished final render')
 win.getMouse()
