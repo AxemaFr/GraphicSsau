@@ -12,8 +12,8 @@ def open_file():
     for line in f:
         if line.startswith('v '):
             parts = line.split(' ')
-            model.addPoint([int(float(parts[1]) * 6000 + 500),
-                            int(-float(parts[2]) * 6000 + 800),
+            model.addPoint([int(float(parts[1]) * 6000 + 400),
+                            int(-float(parts[2]) * 6000 + 600),
                             int(float(parts[3].split('\n')[0]) * 6000 + 500)])
         if line.startswith('f '):
             parts = line.split(' ')
@@ -221,7 +221,7 @@ def draw_polygons():
 
 model = Model()
 
-win = GraphWin("Картинка", 800, 800)
+win = GraphWin("Картинка", 800, 600)
 win.autoflush = False
 
 open_file()
