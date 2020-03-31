@@ -2,9 +2,7 @@ from Model import Model
 from graphics import *
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import *
 
-zbufer = np.zeros((1000, 1000))
 
 def open_file():
     f = open('stanford_bunny/stanford-bunny.obj', 'r')
@@ -12,9 +10,9 @@ def open_file():
     for line in f:
         if line.startswith('v '):
             parts = line.split(' ')
-            model.addPoint([int(float(parts[1]) * 6000 + 400),
-                            int(-float(parts[2]) * 6000 + 600),
-                            int(float(parts[3].split('\n')[0]) * 6000 + 500)])
+            model.addPoint([int(float(parts[1]) * width * 30 / 4 + width/2),
+                            int(-float(parts[2]) * width * 30 / 4 + width*3/4),
+                            int(float(parts[3].split('\n')[0]) * width * 30 / 4 + width/2)])
         if line.startswith('f '):
             parts = line.split(' ')
             model.addPolygon(
@@ -31,20 +29,21 @@ def draw_textured_pix(point, coords, texture, bright):
     g = int(texture[int(coords[0] * 511), int(coords[1] * 511), 1] * 255 * bright)
     b = int(texture[int(coords[0] * 511), int(coords[1] * 511), 2] * 255 * bright)
 
-    if r>255:
+    if r > 255:
         r = 255
-    if g>255:
+    if g > 255:
         g = 255
-    if b>255:
+    if b > 255:
         b = 255
 
-    color = color_rgb(r, g, b)
-    win.plot(point[0], point[1], color)
+    color = color_rgb(int(bright*254), int(bright*254), int(bright*254))
+    a.setPixel(point[0], point[1], color)
 
 
 def open_texture():
     texture = plt.imread('stanford_bunny/negz.png')
     return texture
+
 
 def draw_line(x1, y1, x2, y2, bright, pt1, pt2, pt3, texture):
     change = False
@@ -109,8 +108,6 @@ def fillPolygon(pt1, pt2, pt3, bright, texture):
             draw_textured_pix(point, coords, texture, np.abs(brightTemp))
 
 
-
-
 def zb(x, y, z):
     if zbufer[x][y] < z:
         zbufer[x][y] = z
@@ -149,19 +146,19 @@ def barycentric(pt1, pt2, pt3, x, y, zbonly, coords):
 
     if coords:
         if zb(x, y, bar1 * pt1[2] + bar2 * pt2[2] + bar3 * pt3[2]):
-            #arr = [int(bar1 * pt1[0] + bar2 * pt2[0] + bar3 * pt3[0]), int(bar1 * pt1[1] + bar2 * pt2[1] + bar3 * pt3[1])]
+            # arr = [int(bar1 * pt1[0] + bar2 * pt2[0] + bar3 * pt3[0]), int(bar1 * pt1[1] + bar2 * pt2[1] + bar3 * pt3[1])]
             arr = [bar1, bar2]
             normArr = arr / np.linalg.norm(arr)
             return normArr
         else:
             return False
 
-    if (bar1 <= 0) or (bar2 <= 0) or (bar3 <= 0):
+    if (bar1 < 0) or (bar2 < 0) or (bar3 < 0):
         return False
 
     if zb(x, y, bar1 * pt1[2] + bar2 * pt2[2] + bar3 * pt3[2]):
         arr = [int(bar1 * pt1[0] + bar2 * pt2[0] + bar3 * pt3[0]), int(bar1 * pt1[1] + bar2 * pt2[1] + bar3 * pt3[1])]
-        normArr = arr/np.linalg.norm(arr)
+        normArr = arr / np.linalg.norm(arr)
         return normArr
     else:
         return False
@@ -187,15 +184,16 @@ def isPolygonVisible(p0, p1, p2):
     )
 
     normal = [
-        (y20 * z10 - z20 * y10)/length,
-        (z20 * x10 - x20 * z10)/length,
-        (x20 * y10 - x10 * y20)/length
+        (y20 * z10 - z20 * y10) / length,
+        (z20 * x10 - x20 * z10) / length,
+        (x20 * y10 - x10 * y20) / length
     ]
 
     if normal[2] <= 0:
         return False
     else:
         return normal[2] * -1
+
 
 def draw_polygons():
     print('Started drawing polygons')
@@ -211,24 +209,23 @@ def draw_polygons():
                 bright = lastgoodbright
             else:
                 lastgoodbright = bright
-
-            draw_line(pt1[0], pt1[1], pt2[0], pt2[1], bright, pt1, pt2, pt3, texture)
-            draw_line(pt2[0], pt2[1], pt3[0], pt3[1], bright, pt1, pt2, pt3, texture)
-            draw_line(pt1[0], pt1[1], pt3[0], pt3[1], bright, pt1, pt2, pt3, texture)
             fillPolygon(pt1, pt2, pt3, bright, texture)
     print('Finished drawing polygons')
 
 
 model = Model()
-
-win = GraphWin("Картинка", 800, 600)
-win.autoflush = False
+width = 1000
+heigth = 1000
+zbufer = np.zeros((width + 1, heigth + 1))
+win = GraphWin("Картинка", width, heigth)
+a = Image(Point(width/2, heigth/2), width, heigth)
 
 open_file()
 open_texture()
-draw_points()
 draw_polygons()
 print('Started final render')
-win.flush()
+a.draw(win)
 print('Finished final render')
 win.getMouse()
+
+
